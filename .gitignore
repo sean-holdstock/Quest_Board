@@ -1,0 +1,86 @@
+# Python / Flask
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+.env/
+env/
+.venv/
+ENV/
+quest_board/
+
+
+# Environment variables / secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Generated quest data
+quests.json
+
+# Byte-compiled / optimized / DLL files
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+
+# Dependency directories (if you ever pip install locally)
+site-packages/
+lib/python*/
+include/
+bin/
+
+# Testing / coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.pytest_cache/
+.pytest_cache/
+
+# macOS junk
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows junk
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Docker / container stuff (if you add later)
+Dockerfile.*
+docker-compose.*
+
+# Miscellaneous
+*.bak
+*.tmp
+*.temp
