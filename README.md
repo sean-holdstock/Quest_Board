@@ -35,8 +35,10 @@ A daily-updating, D&D tavern adventurers' quest board powered by Flask + Google 
     pip install -r requirements.txt
 
 4.Set your Gemini API key
-    
-    cp .env.example .envEdit .env and add:textGEMINI_API_KEY=your-key-here
+
+   touch .env
+   nano .env
+   GEMINI_API_KEY=your-key-here
 
 5.Run the app
     
