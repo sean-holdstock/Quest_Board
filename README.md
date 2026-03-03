@@ -57,3 +57,8 @@ Use your computer's local IP (e.g. http://192.168.1.105:5000) from other devices
 
 You can adjust the port to your prefered port by changing the 
 app.run port at the end of the code. 
+
+
+# Running on WSGI Server
+
+    gunicorn --workers 3 --worker-class gevent --worker-connections 1000 --bind 0.0.0.0:5000 app:app

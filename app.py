@@ -311,85 +311,79 @@ def generate_daily_quests():
     }
 
     # 2. THE WIZARD'S ATTEMPT (AI Generation)
+# 2. THE WIZARD'S ATTEMPT (AI Generation)
     try:
-        if DEBUG_MODE: print("--- DEBUG: Wizard is writing quests and a joke... ---")
+        if DEBUG_MODE: print("--- DEBUG: Wizard is writing quests... ---")
         todays_npcs = random.sample(NPCS, 8)
+        # We create the context list for the AI
         npc_context = "\n".join([f"- {n['name']} ({n['race']}, {n['vibe']})" for n in todays_npcs])
 
-        # New prompt that asks for both quests and the comedic note
+        # 1. FIXED THE F-STRING: Use double {{ }} around {Race} so Python doesn't think it's a variable
         prompt = f"""
                     You are a Quest-Master creating 8 daily quests for a fantasy adventurers' board. 
-                    NPCs today (use EXACTLY ONE per quest, include their full name + "the [Race]" at start of text):
+                    NPCs today:
                     {npc_context}
 
-                    CRITICAL: Generate quests IN STRICT ORDER OF INCREASING DIFFICULTY (first = easiest, last = hardest).
-                    Match these levels EXACTLY — no mundane/cute tasks on high levels!  
-                    The distribution of quests is as follows Difficulty [1, 1, 2, 2, 3, 3, 4, 5] 
-                    Difficulty 1 (*) — SIMPLE village errands, lost items/pets, minor pests, everyday chores for example "A local farmer reports his son wandered into the wheat fields and has gone missing chasing a blue light"
-                    Difficulty 2 (**) — MINOR threats: small monsters, thefts, short trips outside town, light danger for example "A murder of crows is attacking the towns folk, teach the birds a lesson"
-                    Difficulty 3 (***) — MODERATE adventure: bandits/wilderness, undead/spirits, valuable deliveries, real peril for example "Investigate the singing stone in the North, Traverls report earthquakes in the local area once they hear the singing"
-                    Dificulty 4 (****) — SERIOUS danger: large beasts/ruins, curses/hags, rare artifacts, high risk for example "Investigate the old factory, reports that is haunted is preventing production" 
-                    Dificulty 5 (*****) — EPIC threats: Slave traders, local cults and packs of invading beasts (NO cute/mundane — make it legendary!)
+                    CRITICAL: Generate quests IN STRICT ORDER OF INCREASING DIFFICULTY.
+                    Distribution: [1, 1, 2, 2, 3, 3, 4, 5] 
+                    - Lvl 1: Simple errands.
+                    - Lvl 2: Minor threats.
+                    - Lvl 3: Moderate peril.
+                    - Lvl 4: Serious danger.
+                    - Lvl 5: Epic/Legendary threats (No mundane tasks).
 
-                    Rules — follow EXACTLY:
+                    Rules:
                     1. Exactly 8 lines, ONE QUEST PER LINE: [TYPE] | [Quest text]
-                    2. TYPES only: Bounty, Extermination, Gathering, Locating, Escort, Sabotage
-                    3. Text: 70-110 chars, starts "[Name] the [Race] [request]" 
-                    4. Flavor: Match NPC vibe but OVERRIDE with level scaling (e.g. baker on lvl5 hunts dragon ham thief)
-                    5. NO gold, NO notes — quests only!
+                    2. TYPES: Bounty, Extermination, Gathering, Locating, Escort, Sabotage
+                    3. Text Format: "[Name] ({{Race}}): [First-person request text]"
+                    4. Voice: Use FIRST PERSON (I/me/my). Match vocabulary to NPC vibe.
+                    5. Constraint: Total text must be 70-115 characters.
+                    6. NO gold, NO levels in the text.
 
                     Examples:
-                    Bounty | Rosie Apple-Cheeks the Halfling seeks her runaway prize pig from the village pen. (Lvl1)
-                    Extermination | Kriv Golden-Scale the Dragonborn demands the young red dragon slain from the peaks. (Lvl5)
-                Do not mention the level in the text. 
+                    Bounty | Rosie Apple-Cheeks (Halfling): My prize pig has bolted. Find the fat lug before he eats the neighbor's roses!
+                    Extermination | Kriv Golden-Scale (Dragonborn): A young red dragon mocks my honor. Slay the beast and bring me its heart.
                 """
         
         response = client.models.generate_content(
-            model="gemini-2.5-flash-lite", 
+            model="gemini-2.5-flash", 
             contents=prompt
         )
         
         if response.text:
             lines = response.text.strip().split('\n')
             for line in lines:
-                
                 if "|" in line and len(final_quests) < 8:
-                    parts = line.split("|", 1)           # safer: only split on first |
+                    parts = line.split("|", 1)
                     if len(parts) == 2:
                         raw_type, raw_text = parts
-        
-        # ── This is the new/improved cleaning part ────────────────────────
-                        q_type = raw_type.strip().title()           # " extermination " → "Extermination"
-        
-        # Optional but strongly recommended: force it to be one of the allowed types
+                        
+                        q_type = raw_type.strip().title()
                         valid_types = {"Extermination", "Gathering", "Locating", "Escort", "Sabotage", "Bounty"}
                         if q_type not in valid_types:
-                            q_type = "Bounty"                       # fallback if AI does something crazy
-        # ──────────────────────────────────────────────────────────────────
+                            q_type = "Bounty"
 
                         lvl = LEVEL_DISTRIBUTION[len(final_quests)]
+                        # Match the NPC used in this line
                         match = next((n for n in todays_npcs if n['name'] in raw_text), todays_npcs[len(final_quests)])
 
-        # Optional: force NPC name + race at start (as discussed earlier)
-                        prefix = f"{match['name']} the {match['race']} "
-                        if not raw_text.strip().lower().startswith(match['name'].lower()):
-                            q_text = prefix + raw_text.strip()
-                        else:
-                            q_text = raw_text.strip()
+                        # 2. FIXED THE PREFIX LOGIC: 
+                        # We no longer force "Name the Race" because the AI is already providing "Name (Race):"
+                        q_text = raw_text.strip()
 
                         final_quests.append({
                             "level": "*" * lvl,
-                            "type": q_type,                    # ← now clean & title-cased
-                            "text": q_text[:135],
+                            "type": q_type,
+                            "text": q_text[:135], # Safety clip
                             "signature": match['name'],
-                            "gold": f"{random.randint(lvl*1, lvl*80)} GP"
+                            "gold": f"{random.randint(lvl*10, lvl*80)} GP"
                         })
             
             if len(final_quests) == 8:
                 api_online = True
 
     except Exception as e:
-        if DEBUG_MODE: print(f"--- DEBUG: AI Failed. Using backup. ---")
+        if DEBUG_MODE: print(f"--- DEBUG: AI Failed: {e} ---")
         api_online = False
         
  # 3. BACKUP LOGIC (If AI failed or was throttled)
@@ -457,192 +451,355 @@ def get_quests():
 # --- WEB ROUTE ---
 # Move the HTML string OUTSIDE the function so it doesn't clutter your logic
 html = """
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=MedievalSharp&family=Great+Vibes&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=MedievalSharp&family=Great+Vibes&family=Homemade+Apple&family=Cedarville+Cursive&family=Reenie+Beanie&display=swap');
+    
     * { box-sizing: border-box; }
+
     :root {
         --wood-dark: #2a1a12;
         --wood-medium: #3a251e;
         --parchment: #f5e8c7;
-        --ink: #0f0b07;          /* very dark for best readability */
-        --candle-glow: #ffcc77;
-        --fire-warm: #ff8c42;
+        --ink: #0f0b07;
+        --gold-bright: #d4af37;
     }
+
     body {
-        background: radial-gradient(ellipse at bottom, #5d2c1f 0%, #3d1a0f 70%),
-                    url('https://www.transparenttextures.com/patterns/dark-mosaic.png'),
-                    url('https://www.transparenttextures.com/patterns/wood-pattern.png');
-        background-blend-mode: overlay, multiply, normal;
-        background-color: #2a1a12;
+        background: 
+            radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%),
+            url("https://www.transparenttextures.com/patterns/stone-wall.png"),
+            #1e0f09;
+        background-blend-mode: multiply;
+        background-attachment: fixed;
         color: var(--ink);
         margin: 0;
-        padding: 40px 20px;
+        padding: 20px 20px; 
         min-height: 100vh;
         display: flex;
         flex-direction: column;
         align-items: center;
         font-family: 'Architects Daughter', cursive;
     }
+
+    /* --- FOCUS MODE OVERLAY --- */
+    #board-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(5px);
+        opacity: 0; visibility: hidden;
+        transition: opacity 0.4s ease;
+        z-index: 1500;
+    }
+    #board-overlay.active { opacity: 1; visibility: visible; }
+
+    /* 1. THE WIZARD ALERT */
+    #wizard-alert {
+        position: fixed;
+        top: 20px;
+        background: linear-gradient(145deg, #2a1a12, #1a0f0d);
+        border: 2px solid var(--gold-bright);
+        color: #f4e4bc;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.3);
+        z-index: 2000;
+        display: flex;
+        align-items: center; gap: 15px;
+        transform: translateY(-150%);
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #wizard-alert.show { transform: translateY(0); }
+
+    /* --- THE BOARD --- */
     .board {
         position: relative;
-        width: min(1150px, 95vw);
-        background: var(--wood-dark) url('https://www.transparenttextures.com/patterns/wood-pattern.png');
-        border: 30px solid #1f0f0b;
-        border-radius: 12px;
-        padding: 60px 40px;
-        box-shadow: inset 0 0 120px #000, 0 30px 80px #000;
+        width: min(1400px, 98vw); 
+        background-color: #3d2b1f; 
+        background-image: 
+            repeating-linear-gradient(90deg, transparent, transparent 118px, rgba(0, 0, 0, 0.3) 118px, rgba(0, 0, 0, 0.3) 120px),
+            linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
+        border: 30px solid #1a0f0d;
+        padding: 30px 40px 40px; 
+        box-shadow: inset 0 0 100px #000, 0 30px 80px rgba(0,0,0,0.8);
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 50px 30px;
+        grid-template-columns: repeat(4, 1fr); 
+        gap: 25px 20px; 
         justify-content: center;
+        align-items: start;
     }
+
+    .scrawl-note {
+        position: absolute;
+        top: -12px; right: 10px; 
+        width: 180px;
+        background: #fff9c4;
+        color: #b71c1c;
+        padding: 12px;
+        font-size: 0.9em;
+        font-weight: bold;
+        transform: rotate(8deg);
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        z-index: 500;
+        text-align: center;
+        border: 1px solid #f0e68c;
+    }
+
     h1 {
         font-family: 'MedievalSharp', cursive;
         color: #f4e4bc;
-        text-shadow: 3px 3px 6px #000;
-        font-size: 3.5em;
-        margin: 0 0 30px;
+        text-shadow: 2px 2px 0px #000, -1px -1px 0px var(--gold-bright);
+        font-size: clamp(1.8em, 4vw, 2.8em); 
+        margin: 0 0 15px; 
         text-align: center;
-        background: rgba(0,0,0,0.7);
-        padding: 15px 60px;
-        border-radius: 8px;
-        border: 3px solid #d4af37;
+        background: linear-gradient(to bottom, #2a1a12, #14080a);
+        padding: 10px 60px; 
+        border-radius: 4px;
+        border: 4px solid var(--gold-bright);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(212, 175, 55, 0.2);
         grid-column: 1 / -1;
     }
+
+    .quest-wrapper {
+        display: flex; flex-direction: column; align-items: center;
+        position: relative; cursor: pointer;
+        transform-origin: top center; 
+    }
+
+    .quest-wrapper::before {
+        content: '';
+        width: 24px; height: 24px;
+        background: radial-gradient(circle at 30% 30%, #555, #111);
+        border: 3px solid #000;
+        border-radius: 50%;
+        box-shadow: inset 2px 2px 0px #777, 0 4px 6px rgba(0,0,0,0.8);
+        position: relative; top: 35px;
+        z-index: 1000; margin-bottom: -24px;
+        transition: opacity 0.2s ease;
+    }
+
+    .quest-wrapper.focused::before { opacity: 0; }
+
     .note {
-        width: 100%;
-        min-height: 300px;
-        padding: 25px;
-        background: url('https://www.transparenttextures.com/patterns/old-paper.png'), var(--parchment);
-        color: var(--ink);
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        width: 100%; max-width: 380px; min-height: 480px;
+        padding: 85px 45px;
+        background: url("{{ url_for('static', filename='weathered-scroll-transparent.png') }}") center / 100% 100% no-repeat;
         position: relative;
-        display: flex;
-        flex-direction: column;
-        transition: all 0.3s ease;
-        cursor: pointer;
+        display: flex; flex-direction: column;
+        filter: drop-shadow(12px 12px 0px rgba(0,0,0,0.4));
         opacity: 0;
         animation: fadeInUp 0.6s ease-out forwards;
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
+
+    /* --- DESKTOP FOCUS LOGIC (Corrected) --- */
+    .quest-wrapper.focused { 
+        z-index: 1600; 
+    }
+    
+    .quest-wrapper.focused .note {
+         position: fixed; 
+         top: 50%; 
+         left: 50%;
+         transform: translate(-50%, -50%) scale(1.1) rotate(0deg) !important;
+         width: 95vw; max-width: 500px; 
+         height: auto; max-height: 80vh; 
+         padding: 90px 50px; 
+    }
+    
+    .quest-wrapper.focused .gold-plate {
+        position: fixed;
+        top: calc(50% + 220px); 
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1601; 
+        width: 220px;
+        margin-top: 0;
+    }
+
     @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(30px) rotate(-5deg); }
+        from { opacity: 0; transform: translateY(30px) rotate(-3deg); }
         to { opacity: 1; transform: translateY(0) rotate(var(--rotation, 0deg)); }
     }
+
     .note-header {
-        text-align: center;
-        border-bottom: 2px double rgba(0,0,0,0.3);
-        margin-bottom: 10px;
-        padding-bottom: 8px;
+        text-align: center; display: flex; flex-direction: column-reverse; 
+        border-bottom: 4px double rgba(0,0,0,0.1);
+        margin-bottom: 15px; padding-bottom: 5px;
     }
-    .stars {
-        font-size: 1.6em;
-        color: #d4af37;
-        display: block;
-        margin-bottom: 5px;
-    }
+
     .wanted-text {
         font-family: 'MedievalSharp', serif;
-        font-weight: bold;
-        font-size: 0.9em;
-        color: #d4af37;
-        text-transform: uppercase;
+        font-weight: bold; font-size: 0.9em;
+        color: #b8860b; text-transform: uppercase;
     }
+
+    .stars { font-size: 1.4em; color: #b8860b; }
+
     .note-text {
         font-family: 'Architects Daughter', cursive;
-        font-size: 1.1em;
-        line-height: 1.4;
-        color: #0f0b07;
-        flex-grow: 1;
+        font-size: 1.1em; line-height: 1.4;
+        color: var(--ink); display: flex; flex-direction: column;
+        justify-content: space-between; flex-grow: 1;
     }
+
     .signature {
-        text-align: right;
-        margin-top: 15px;
-        font-family: 'Great Vibes', cursive;
-        font-size: 1.8em;
+        text-align: right; margin-top: auto; padding-top: 15px;
+        font-family: 'Great Vibes', cursive; font-size: 1.8em;
         color: #3a1f12;
     }
-    .gold {
-        font-weight: bold;
-        text-align: center;
-        font-size: 1.3em;
-        margin-top: 12px;
-        padding: 6px;
-        background: rgba(255,215,0,0.15);
-        border: 1px dashed #d4af37;
-        color: #000000;
+
+    .gold-plate {
+        width: 75%; margin-top: -18px;
+        background: linear-gradient(145deg, #e6c253, #aa8a2e);
+        color: #1a0f0d; font-family: 'MedievalSharp', serif;
+        font-weight: bold; font-size: 1.2em; text-align: center;
+        padding: 10px; border: 2px solid #5c430d; border-top: none;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.6); border-radius: 0 0 10px 10px;
+        position: relative; z-index: 5; transition: all 0.4s ease;
     }
+
     .timer-container {
-        grid-column: 1 / -1;
-        text-align: center;
-        margin: 20px 0 40px;
-        background: rgba(0,0,0,0.5);
-        padding: 15px;
-        border-radius: 10px;
-        border: 2px solid #d4af37;
+        grid-column: 1 / -1; width: 100%; max-width: 700px;
+        margin: 0 auto 10px; 
+        background: rgba(0,0,0,0.8);
+        padding: 10px 20px; 
+        border-radius: 8px;
+        border: 2px solid var(--gold-bright);
+        display: flex; flex-direction: column; gap: 5px;
     }
+
     .hourglass-label {
         font-family: 'MedievalSharp', serif;
-        color: #d4af37;
-        font-size: 1.3em;
-        margin-bottom: 10px;
-        text-transform: uppercase;
+        color: var(--gold-bright); font-size: 1.1em;
+        text-transform: uppercase; text-align: center;
     }
+
     .timer-bar-outer {
-        width: 100%;
-        height: 14px;
-        background: #1a0f0d;
-        border: 2px solid #d4af37;
-        border-radius: 10px;
+        width: 100%; height: 14px; background: #1a0f0d;
+        border: 1px solid var(--gold-bright); border-radius: 10px;
         overflow: hidden;
     }
+
     .timer-bar-inner {
-        height: 100%;
-        background: linear-gradient(90deg, #8b4513, #d4af37, #8b4513);
-        background-size: 200% 100%;
-        animation: flowing-sand 5s linear infinite;
+        height: 100%; background: linear-gradient(90deg, #8b4513, var(--gold-bright), #8b4513);
+        background-size: 200% 100%; animation: flowing-sand 5s linear infinite;
         width: {{ 100 - day_progress }}%;
     }
+
     @keyframes flowing-sand {
         0% { background-position: 0% 50%; }
         100% { background-position: 100% 50%; }
     }
-    .scrawl-note {
-        position: absolute;
-        top: 20px;
-        right: -30px;
-        width: 180px;
-        min-height: 100px;
-        background: #fff9c4;
-        color: #b71c1c;
-        padding: 20px 15px;
-        font-family: 'Architects Daughter', cursive;
-        font-size: 0.95em;
-        font-weight: bold;
-        line-height: 1.2;
-        transform: rotate(15deg);
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
-        z-index: 200;
-        text-align: center;
+
+    /* --- RANDOMIZED TILTS --- */
+    .quest-wrapper:nth-child(odd) { transform: rotate(-1.5deg); }
+    .quest-wrapper:nth-child(even) { transform: rotate(1.2deg); }
+    .quest-wrapper:nth-child(3n) { transform: rotate(1.8deg); }
+    .quest-wrapper:nth-child(4n) { transform: rotate(-2.1deg); }
+
+    .quest-wrapper.focused { transform: rotate(0deg) !important; }
+
+    /* --- RANDOMIZED SIGNATURES & INK --- */
+    .quest-wrapper:nth-child(2n) .signature {
+        font-family: 'Cedarville Cursive', cursive;
+        font-size: 1.5em;
     }
-    #wizard-alert {
-        background: #1a0f0d;
-        border: 2px solid #d4af37;
-        color: #f4e4bc;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        display: none;
-        align-items: center;
-        gap: 15px;
+
+    .quest-wrapper:nth-child(3n) .signature {
+        font-family: 'Homemade Apple', cursive;
+        font-size: 1.3em;
     }
-    #wizard-alert.show {
-        display: flex;
+
+    .quest-wrapper:nth-child(4n) .signature {
+        font-family: 'Reenie Beanie', cursive;
+        font-size: 2.2em;
+    }
+
+    .quest-wrapper:nth-child(odd) .signature {
+        color: #2a1a12; /* Charcoal ink */
+    }
+    
+    .quest-wrapper:nth-child(even) .signature {
+        color: #4b3621; /* Dried blood / Rusty ink */
+    }
+
+    /* --- RESPONSIVE ADJUSTMENTS --- */
+    @media (max-width: 1100px) {
+        .board { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media screen and (max-width: 600px) {
+        .board { 
+            grid-template-columns: 1fr; 
+            padding: 80px 10px 30px !important;
+            border-width: 15px !important;
+        }
+
+        .scrawl-note {
+            width: 220px !important;
+            font-size: 1.15rem !important;
+            top: -25px !important;
+            left: 50% !important;
+            transform: translateX(-50%) rotate(3deg) !important;
+            padding: 10px !important;
+        }
+
+        .hourglass-label {
+            font-size: 1.4rem !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        .timer-bar-outer { height: 24px !important; }
+
+        h1 {
+            font-size: 1.6rem !important;
+            padding: 12px 10px !important;
+            margin-bottom: 25px !important;
+        }
+
+        /* --- MOBILE-ONLY FIX: Wrapper becomes the fixed container --- */
+        .quest-wrapper.focused {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            width: 90vw !important;
+            height: auto !important;
+            transform: translate(-50%, -50%) !important;
+            z-index: 1700 !important;
+        }
+
+        .quest-wrapper.focused .note {
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            max-height: 70vh !important; 
+            padding: 70px 30px 100px !important;
+            transform: none !important;
+        }
+
+        .quest-wrapper.focused .gold-plate {
+            position: absolute !important; 
+            top: auto !important;
+            bottom: -15px !important; 
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 180px !important;
+            z-index: 1701 !important;
+            margin: 0 !important;
+        }
     }
 </style>
 </head>
 <body>
+    <div id="board-overlay"></div>
+
     <div id="wizard-alert" {% if api_failed %}class="show"{% endif %}>
         <span>😴</span>
         <div>
@@ -663,32 +820,41 @@ html = """
         </div>
 
         {% for q in quests %}
-        <div class="note note-{{ loop.index }}">
-            <div class="note-header">
-                <span class="stars">{{ q.level }}</span>
-                <div class="wanted-text">{{ q.type }} WANTED</div>
+        <div class="quest-wrapper" onclick="focusQuest(this)"> 
+            <div class="note note-{{ loop.index }}">
+                <div class="note-header">
+                    <span class="stars">{{ q.level }}</span>
+                    <div class="wanted-text">{{ q.type }} WANTED</div>
+                </div>
+                <div class="note-text">
+                    {{ q.text }}
+                    <div class="signature">{{ q.signature }}</div>
+                </div>
             </div>
-            <div class="note-text">
-                {{ q.text }}
-                <div class="signature">{{ q.signature }}</div>
-            </div>
-            <div class="gold">{{ q.gold }}</div>
+            <div class="gold-plate">{{ q.gold }}</div>
         </div>
         {% endfor %}
     </div>
 
     <script>
-        {% if api_failed %}
-        window.addEventListener('load', () => {
-            const alert = document.getElementById('wizard-alert');
-            setTimeout(() => { 
-                alert.classList.add('show');
-            }, 1500);
-            setTimeout(() => { 
-                alert.classList.remove('show');
-            }, 6500);
-        });
-        {% endif %}
+        const overlay = document.getElementById('board-overlay');
+
+        function focusQuest(element) {
+            if (element.classList.contains('focused')) {
+                closeAllQuests();
+                return;
+            }
+            closeAllQuests();
+            element.classList.add('focused');
+            overlay.classList.add('active');
+        }
+
+        function closeAllQuests() {
+            document.querySelectorAll('.quest-wrapper').forEach(q => q.classList.remove('focused'));
+            overlay.classList.remove('active');
+        }
+
+        overlay.addEventListener('click', closeAllQuests);
     </script>
 </body>
 </html>
