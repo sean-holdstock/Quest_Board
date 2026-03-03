@@ -1,0 +1,54 @@
+services:
+  web:
+    build: .
+    container_name: quest-web
+    restart: unless-stopped
+    volumes:
+      - static-files:/app/static
+      - quests-data:/app   # persists quests.json & any other writes
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: quest-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - certbot-webroot:/var/www/certbot
+      - certs:/etc/letsencrypt
+      - static-files:/app/static:ro
+    depends_on:
+      - web
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}   # read from .env or set at runtime
+    networks:
+      - frontend
+      - backend
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: quest-certbot
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - certs:/etc/letsencrypt
+    depends_on:
+      - nginx
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  certbot-webroot:
+  certs:
+  static-files:
+  quests-data:
+
+networks:
+  frontend:
+  backend:
