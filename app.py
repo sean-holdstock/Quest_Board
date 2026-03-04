@@ -472,7 +472,7 @@ html = """
     body {
         background: 
             radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%),
-            url("https://www.transparenttextures.com/patterns/stone-wall.png"),
+            url("/static/cartoon-stone-texture.png"),
             #1e0f09;
         background-blend-mode: multiply;
         background-attachment: fixed;
