@@ -2,7 +2,8 @@
 
 A daily-updating, D&D tavern adventurers' quest board powered by Flask + Google Gemini AI. Perfect for D&D/Drop-in sessions when a player is missing or you need quick side quests.
 
-<img width="500" height="400" alt="image" src="https://github.com/user-attachments/assets/6c82ef16-43c5-40cb-8d08-f0beb0844896" />
+<img width="400" height="500" alt="image" src="https://github.com/user-attachments/assets/07d37e60-0487-49f2-aa75-38fc54aad28a" />
+
 
 
 ## Features
