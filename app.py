@@ -858,6 +858,7 @@ html = """
     </script>
 <footer style="margin-top: 40px text-align: center; color: #8b6f47; font-szie: 0.9em; opacity: 0.8;">
     Created By  <a href="https://github.com/sean-holdstock/" style="color: #d4af37; text-decoration: none;"> Sean Holdstock </a> 2026
+</footer>
 </body>
 </html>
 """
