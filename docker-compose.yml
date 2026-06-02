@@ -1,0 +1,52 @@
+services:
+  web:
+    build: .
+    container_name: quest-web
+    restart: unless-stopped
+    volumes:
+      - quest-data:/app
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: quest-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - certbot-webroot:/var/www/certbot
+      - certs:/etc/letsencrypt
+    depends_on:
+      - web
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
+    networks:
+      - frontend
+      - backend
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: quest-certbot
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - certs:/etc/letsencrypt
+    depends_on:
+      - nginx
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  certbot-webroot:
+  certs:
+  quest-data:
+
+networks:
+  frontend:
+  backend:
